@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import api from '../../api/api';
+import api from '../../Api/api';
 import { saveAs } from "file-saver"
 import * as XLSX from "xlsx"
 import Dashboard from '../../Components/Dashboard';

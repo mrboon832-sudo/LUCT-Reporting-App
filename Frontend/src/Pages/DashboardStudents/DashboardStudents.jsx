@@ -1,6 +1,6 @@
 // src/Pages/Student/DashboardStudents.jsx
 import { useEffect, useState } from "react";
-import api from "../../api/api";
+import api from "../../Api/api";
 import logo from "../Limkokwing_Lesotho_Logo.jpg";
 import Dashboard from "../../Components/Dashboard";
 import "../../CSS/Dashboard.css";
