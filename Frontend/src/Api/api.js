@@ -1,7 +1,7 @@
 import axios from "axios"
 
 const api = axios.create({
-  baseURL: "http://localhost:5000/api", // change to your deployed URL later
+  baseURL: "https://luct-reporting-app-p7o9.onrender.com", // change to your deployed URL later
 })
 
 api.interceptors.request.use(config => {

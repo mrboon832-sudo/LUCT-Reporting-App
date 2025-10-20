@@ -1,5 +1,5 @@
 import { useState } from "react"
-import api from '../api/api';
+import api from '../Api/api';
 import "../CSS/Auth.css"
 import logo from "../Pages/Limkokwing_Lesotho_Logo.jpg";
 import { useNavigate, Link } from "react-router-dom"
