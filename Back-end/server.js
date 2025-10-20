@@ -17,7 +17,7 @@ dotenv.config();
 const app = express();
 
 
-app.use(cors({ origin: "http://localhost:5173" }));
+app.use(cors({ origin: "https://luct-reporting-app-1-jmrb.onrender.com" }));
 
 
 app.use(express.json());
