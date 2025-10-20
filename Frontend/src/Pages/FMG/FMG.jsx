@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../../Api/api";
 import Dashboard from "../../Components/Dashboard";
 import "../../CSS/Dashboard.css";
-import "../../CSS/FMG.css";
+import "../../CSS/fmg.css";
 import { saveAs } from "file-saver";
 import * as XLSX from "xlsx";
 import { 

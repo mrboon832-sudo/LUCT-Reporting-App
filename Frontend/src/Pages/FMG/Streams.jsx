@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import api from "../../Api/api";
 import Dashboard from "../../Components/Dashboard";
 import "../../CSS/Dashboard.css";
-import "../../CSS/FMG.css";
+import "../../CSS/fmg.css";
 import { 
   Layers, PlusCircle, Edit3, Trash2, ArrowLeft, Search, Users, X
 } from "lucide-react";

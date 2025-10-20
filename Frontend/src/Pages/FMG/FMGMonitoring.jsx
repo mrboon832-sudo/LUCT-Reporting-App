@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import api from "../../Api/api";
 import Dashboard from "../../Components/Dashboard";
 import "../../CSS/Dashboard.css";
-import "../../CSS/FMG.css";
+import "../../CSS/fmg.css";
 import { 
   Activity, Server, Users, BookOpen, Layers, UserPlus, Award,
   TrendingUp, TrendingDown, AlertTriangle, CheckCircle, XCircle,
