@@ -1,4 +1,3 @@
-// src/Pages/PL/PLCourses.jsx
 import { useEffect, useState } from "react"
 import api from "../../Api/api";
 import Dashboard from "../../Components/Dashboard";

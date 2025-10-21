@@ -95,3 +95,90 @@ export const addCourse = async (req, res) => {
     });
   }
 };
+
+export const updateCourse = async (req, res) => {
+  const { id } = req.params;
+  const { 
+    course_code, 
+    course_name, 
+    faculty_name, 
+    stream_id, 
+    total_registered_students, 
+    status 
+  } = req.body;
+
+  console.log(`📥 PUT /courses/${id} - Request body:`, req.body);
+
+  try {
+    const result = await pool.query(
+      `UPDATE courses 
+       SET course_code = $1, course_name = $2, faculty_name = $3, 
+           stream_id = $4, total_registered_students = $5, status = $6
+       WHERE id = $7 RETURNING *`,
+      [
+        course_code, 
+        course_name, 
+        faculty_name, 
+        stream_id, 
+        total_registered_students, 
+        status, 
+        id
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      console.log(`❌ Course with ID ${id} not found`);
+      return res.status(404).json({ error: "Course not found" });
+    }
+
+    console.log("✅ Course updated successfully:", result.rows[0]);
+    res.json({ 
+      message: "Course updated successfully",
+      course: result.rows[0]
+    });
+  } catch (err) {
+    console.error("❌ Error updating course:", err);
+    
+    if (err.code === '23505') {
+      return res.status(409).json({ 
+        error: "Duplicate course code",
+        details: "A course with this code already exists"
+      });
+    }
+
+    if (err.code === '23503') {
+      return res.status(400).json({ 
+        error: "Invalid foreign key",
+        details: "The stream_id does not exist"
+      });
+    }
+
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const deleteCourse = async (req, res) => {
+  const { id } = req.params;
+  console.log(`📥 DELETE /courses/${id} - Deleting course`);
+
+  try {
+    const result = await pool.query(
+      "DELETE FROM courses WHERE id = $1 RETURNING *",
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      console.log(`❌ Course with ID ${id} not found`);
+      return res.status(404).json({ error: "Course not found" });
+    }
+
+    console.log("✅ Course deleted successfully:", result.rows[0]);
+    res.json({ 
+      message: "Course deleted successfully",
+      deletedCourse: result.rows[0]
+    });
+  } catch (err) {
+    console.error("❌ Error deleting course:", err);
+    res.status(500).json({ error: err.message });
+  }
+};

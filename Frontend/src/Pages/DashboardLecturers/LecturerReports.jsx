@@ -5,7 +5,7 @@ import '../../CSS/Dashboard.css';
 import "../../CSS/Lecturer.css";
 import { saveAs } from "file-saver"
 import * as XLSX from "xlsx"
-import { BookOpen, FileText, Star, UserCircle, Download, Users, Award, AlertCircle, CheckCircle, Plus} from "lucide-react"
+import { BookOpen, FileText, Star, UserCircle, Download, Users, Award, AlertCircle, CheckCircle, Plus, Edit, Trash2, X} from "lucide-react"
 
 export default function Reports() {
   const [user, setUser] = useState(null)
@@ -17,11 +17,12 @@ export default function Reports() {
   const [error, setError] = useState(null)
   const [exportLoading, setExportLoading] = useState(false)
   
-
   const [showSubmitModal, setShowSubmitModal] = useState(false)
+  const [editingReport, setEditingReport] = useState(null)
   const [submitLoading, setSubmitLoading] = useState(false)
   const [submitError, setSubmitError] = useState(null)
   const [submitSuccess, setSubmitSuccess] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(null)
   const [formData, setFormData] = useState({
     course_id: '',
     week_of_reporting: '',
@@ -97,6 +98,42 @@ export default function Reports() {
     setSubmitError(null)
   }
 
+  const handleEditReport = (report) => {
+    setEditingReport(report)
+    setFormData({
+      course_id: report.course_id.toString(),
+      week_of_reporting: report.week_of_reporting.toString(),
+      date_of_lecture: report.date_of_lecture ? report.date_of_lecture.split('T')[0] : '',
+      actual_students_present: report.actual_students_present?.toString() || '',
+      topic_taught: report.topic_taught || '',
+      venue: report.venue || '',
+      scheduled_time: report.scheduled_time || '',
+      learning_outcomes: report.learning_outcomes || '',
+      recommendations: report.recommendations || ''
+    })
+    setShowSubmitModal(true)
+  }
+
+  const handleDeleteReport = async (reportId) => {
+    if (!window.confirm("Are you sure you want to delete this report? This action cannot be undone.")) {
+      return
+    }
+
+    try {
+      setDeleteLoading(reportId)
+      await api.delete(`/reports/${reportId}`)
+      
+      // Remove from local state
+      setReports(prev => prev.filter(report => report.id !== reportId))
+      
+    } catch (err) {
+      console.error("Error deleting report:", err)
+      setError("Failed to delete report. Please try again.")
+    } finally {
+      setDeleteLoading(null)
+    }
+  }
+
   const handleSubmitReport = async (e) => {
     e.preventDefault()
     setSubmitLoading(true)
@@ -104,7 +141,6 @@ export default function Reports() {
     setSubmitSuccess(false)
 
     try {
-   
       if (!formData.course_id) {
         throw new Error('Please select a course')
       }
@@ -115,10 +151,8 @@ export default function Reports() {
         throw new Error('Please select the lecture date')
       }
 
-
       const selectedCourse = lecturerCourses.find(course => course.id === parseInt(formData.course_id))
       
-
       const reportData = {
         lecturer_id: user.id,
         course_id: parseInt(formData.course_id),
@@ -133,14 +167,25 @@ export default function Reports() {
         recommendations: formData.recommendations || 'No specific recommendations'
       }
 
-      console.log('Submitting report data to lecture_reports table:', reportData)
-
-      const response = await api.post('/reports', reportData)
+      let response
+      if (editingReport) {
+        // Update existing report
+        response = await api.put(`/reports/${editingReport.id}`, reportData)
+        // Update local state
+        setReports(prev => prev.map(report => 
+          report.id === editingReport.id ? { ...report, ...reportData } : report
+        ))
+      } else {
+        // Create new report
+        response = await api.post('/reports', reportData)
+        // Add to local state
+        setReports(prev => [...prev, response.data])
+      }
       
       console.log('Report submitted successfully:', response.data)
       
       setSubmitSuccess(true)
-      
+      setEditingReport(null)
 
       setFormData({
         course_id: '',
@@ -154,9 +199,7 @@ export default function Reports() {
         recommendations: ''
       })
 
-
       setTimeout(() => {
-        fetchData(user.id)
         setShowSubmitModal(false)
         setSubmitSuccess(false)
       }, 1500)
@@ -174,6 +217,7 @@ export default function Reports() {
   const closeModal = () => {
     if (!submitLoading) {
       setShowSubmitModal(false)
+      setEditingReport(null)
       setSubmitError(null)
       setSubmitSuccess(false)
       setFormData({
@@ -213,7 +257,6 @@ export default function Reports() {
         XLSX.utils.book_append_sheet(workbook, coursesWorksheet, 'My Courses')
       }
       
- 
       const reportsData = reports.map(report => {
         const course = courses.find((c) => c.id === report.course_id)
         return {
@@ -251,7 +294,6 @@ export default function Reports() {
         XLSX.utils.book_append_sheet(workbook, ratingsWorksheet, 'My Ratings')
       }
       
-  
       const summaryData = [{
         'Total Courses': assignments.length,
         'Total Reports': reports.length,
@@ -336,10 +378,9 @@ export default function Reports() {
                   <UserCircle size={56} />
                 </div>
                 <div>
-                  <h1 className="hero-title mb-1">Welcome back, {user?.full_name}</h1>
+                  <h1 className="hero-title mb-1">Lecturer reports</h1>
                   <p className="hero-subtitle mb-0">
-                    <span className="me-3">📧 {user?.email}</span>
-                    <span>🆔 {user?.staff_student_id}</span>
+                    <span className="me-3">Write reports on course progress for all your classes</span>
                   </p>
                 </div>
               </div>
@@ -364,57 +405,6 @@ export default function Reports() {
                   </>
                 )}
               </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Statistics Cards */}
-        <div className="row g-4 mb-4">
-          <div className="col-md-3">
-            <div className="stat-card stat-card-green">
-              <div className="stat-icon">
-                <BookOpen size={28} />
-              </div>
-              <div className="stat-content">
-                <div className="stat-value">{assignments.length}</div>
-                <div className="stat-label">Active Courses</div>
-              </div>
-            </div>
-          </div>
-          <div className="col-md-3">
-            <div className="stat-card stat-card-blue">
-              <div className="stat-icon">
-                <Users size={28} />
-              </div>
-              <div className="stat-content">
-                <div className="stat-value">{totalStudents}</div>
-                <div className="stat-label">Total Students</div>
-              </div>
-            </div>
-          </div>
-          <div className="col-md-3">
-            <div className="stat-card stat-card-orange">
-              <div className="stat-icon">
-                <FileText size={28} />
-              </div>
-              <div className="stat-content">
-                <div className="stat-value">{reports.length}</div>
-                <div className="stat-label">Reports Submitted</div>
-              </div>
-            </div>
-          </div>
-          <div className="col-md-3">
-            <div className="stat-card stat-card-yellow">
-              <div className="stat-icon">
-                <Award size={28} />
-              </div>
-              <div className="stat-content">
-                <div className="stat-value">{avgRating}</div>
-                <div className="stat-label">Average Rating</div>
-                {ratings.length > 0 && (
-                  <div className="stat-subtext">{ratings.length} ratings</div>
-                )}
-              </div>
             </div>
           </div>
         </div>
@@ -498,6 +488,28 @@ export default function Reports() {
                   return (
                     <div key={r.id} className="col-lg-4 col-md-6">
                       <div className="report-card">
+                        <div className="report-actions">
+                          <button
+                            className="btn btn-sm btn-outline-primary"
+                            onClick={() => handleEditReport(r)}
+                            disabled={deleteLoading === r.id}
+                          >
+                            <Edit size={14} />
+                          </button>
+                          <button
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() => handleDeleteReport(r.id)}
+                            disabled={deleteLoading === r.id}
+                          >
+                            {deleteLoading === r.id ? (
+                              <div className="spinner-border spinner-border-sm" role="status">
+                                <span className="visually-hidden">Deleting...</span>
+                              </div>
+                            ) : (
+                              <Trash2 size={14} />
+                            )}
+                          </button>
+                        </div>
                         <div className="d-flex align-items-start gap-3 mb-3">
                           <div className="report-icon">
                             <FileText size={24} />
@@ -625,52 +637,54 @@ export default function Reports() {
           </div>
         </div>
 
-        {/* Submit Report Modal */}
+        {/* Submit/Edit Report Modal */}
         {showSubmitModal && (
           <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-            <div className="modal-dialog modal-lg modal-dialog-centered">
-              <div className="modal-content">
-                <div className="modal-header">
+            <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+              <div className="modal-content border-0 shadow-lg">
+                <div className="modal-header bg-gradient-primary text-white">
                   <h5 className="modal-title d-flex align-items-center gap-2">
                     <FileText size={24} />
-                    Submit New Report
+                    {editingReport ? 'Edit Report' : 'Submit New Report'}
                   </h5>
                   <button 
                     type="button" 
-                    className="btn-close" 
+                    className="btn-close btn-close-white" 
                     onClick={closeModal}
                     disabled={submitLoading}
                   ></button>
                 </div>
 
                 <form onSubmit={handleSubmitReport}>
-                  <div className="modal-body">
+                  <div className="modal-body bg-light">
                     {submitError && (
-                      <div className="alert alert-danger d-flex align-items-center mb-3">
-                        <AlertCircle size={20} className="me-2" />
-                        {submitError}
+                      <div className="alert alert-danger d-flex align-items-center mb-4">
+                        <AlertCircle size={20} className="me-2 flex-shrink-0" />
+                        <div className="flex-grow-1">{submitError}</div>
                       </div>
                     )}
 
                     {submitSuccess && (
-                      <div className="alert alert-success d-flex align-items-center mb-3">
-                        <CheckCircle size={20} className="me-2" />
-                        Report submitted successfully!
+                      <div className="alert alert-success d-flex align-items-center mb-4">
+                        <CheckCircle size={20} className="me-2 flex-shrink-0" />
+                        <div className="flex-grow-1">
+                          Report {editingReport ? 'updated' : 'submitted'} successfully!
+                        </div>
                       </div>
                     )}
 
-                    <div className="row g-3">
+                    <div className="row g-4">
                       <div className="col-md-6">
-                        <label className="form-label">
+                        <label className="form-label fw-semibold">
                           Course <span className="text-danger">*</span>
                         </label>
                         <select
-                          className="form-select"
+                          className="form-select form-select-lg border-0 shadow-sm"
                           name="course_id"
                           value={formData.course_id}
                           onChange={handleFormChange}
                           required
-                          disabled={submitLoading}
+                          disabled={submitLoading || editingReport}
                         >
                           <option value="">Select a course</option>
                           {lecturerCourses.map(course => (
@@ -679,15 +693,16 @@ export default function Reports() {
                             </option>
                           ))}
                         </select>
+                        <div className="form-text">Choose the course for this report</div>
                       </div>
 
                       <div className="col-md-3">
-                        <label className="form-label">
+                        <label className="form-label fw-semibold">
                           Week <span className="text-danger">*</span>
                         </label>
                         <input
                           type="number"
-                          className="form-control"
+                          className="form-control form-control-lg border-0 shadow-sm"
                           name="week_of_reporting"
                           value={formData.week_of_reporting}
                           onChange={handleFormChange}
@@ -697,67 +712,72 @@ export default function Reports() {
                           disabled={submitLoading}
                           placeholder="1-52"
                         />
+                        <div className="form-text">Week of reporting</div>
                       </div>
 
                       <div className="col-md-3">
-                        <label className="form-label">
+                        <label className="form-label fw-semibold">
                           Date <span className="text-danger">*</span>
                         </label>
                         <input
                           type="date"
-                          className="form-control"
+                          className="form-control form-control-lg border-0 shadow-sm"
                           name="date_of_lecture"
                           value={formData.date_of_lecture}
                           onChange={handleFormChange}
                           required
                           disabled={submitLoading}
                         />
+                        <div className="form-text">Date of lecture</div>
                       </div>
 
                       <div className="col-md-6">
-                        <label className="form-label">Students Present</label>
+                        <label className="form-label fw-semibold">Students Present</label>
                         <input
                           type="number"
-                          className="form-control"
+                          className="form-control form-control-lg border-0 shadow-sm"
                           name="actual_students_present"
                           value={formData.actual_students_present}
                           onChange={handleFormChange}
                           min="0"
                           disabled={submitLoading}
-                          placeholder="Number of students"
+                          placeholder="Number of students present"
                         />
+                        <div className="form-text">Actual number of students who attended</div>
                       </div>
 
                       <div className="col-md-6">
-                        <label className="form-label">Venue</label>
+                        <label className="form-label fw-semibold">Venue</label>
                         <input
                           type="text"
-                          className="form-control"
+                          className="form-control form-control-lg border-0 shadow-sm"
                           name="venue"
                           value={formData.venue}
                           onChange={handleFormChange}
                           disabled={submitLoading}
                           placeholder="e.g., Lecture Hall A"
                         />
+                        <div className="form-text">Where the lecture took place</div>
                       </div>
 
-                      <div className="col-md-6">
-                        <label className="form-label">Scheduled Time</label>
+                      <div className="col-12">
+                        <label className="form-label fw-semibold">Scheduled Time</label>
                         <input
                           type="text"
-                          className="form-control"
+                          className="form-control form-control-lg border-0 shadow-sm"
                           name="scheduled_time"
                           value={formData.scheduled_time}
                           onChange={handleFormChange}
                           disabled={submitLoading}
                           placeholder="e.g., 9:00 AM - 10:30 AM"
                         />
+                        <div className="form-text">Scheduled time slot for the lecture</div>
                       </div>
 
                       <div className="col-12">
-                        <label className="form-label">Topic Taught</label>
+                        <label className="form-label fw-semibold">Topic Taught</label>
                         <textarea
-                          className="form-control"
+                          className="form-control border-0 shadow-sm"
                           name="topic_taught"
                           value={formData.topic_taught}
                           onChange={handleFormChange}
@@ -765,12 +785,13 @@ export default function Reports() {
                           disabled={submitLoading}
                           placeholder="Describe the topic covered in this lecture..."
                         />
+                        <div className="form-text">Main topic or subjects covered</div>
                       </div>
 
                       <div className="col-12">
-                        <label className="form-label">Learning Outcomes</label>
+                        <label className="form-label fw-semibold">Learning Outcomes</label>
                         <textarea
-                          className="form-control"
+                          className="form-control border-0 shadow-sm"
                           name="learning_outcomes"
                           value={formData.learning_outcomes}
                           onChange={handleFormChange}
@@ -778,12 +799,13 @@ export default function Reports() {
                           disabled={submitLoading}
                           placeholder="What students should be able to do after this lecture..."
                         />
+                        <div className="form-text">Expected learning outcomes achieved</div>
                       </div>
 
                       <div className="col-12">
-                        <label className="form-label">Recommendations</label>
+                        <label className="form-label fw-semibold">Recommendations</label>
                         <textarea
-                          className="form-control"
+                          className="form-control border-0 shadow-sm"
                           name="recommendations"
                           value={formData.recommendations}
                           onChange={handleFormChange}
@@ -791,38 +813,40 @@ export default function Reports() {
                           disabled={submitLoading}
                           placeholder="Any recommendations for improvement..."
                         />
+                        <div className="form-text">Suggestions for future improvements</div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="modal-footer">
+                  <div className="modal-footer bg-white border-top">
                     <button
                       type="button"
-                      className="btn btn-secondary"
+                      className="btn btn-lg btn-outline-secondary"
                       onClick={closeModal}
                       disabled={submitLoading}
                     >
+                      <X size={18} className="me-2" />
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="btn btn-success"
+                      className="btn btn-lg btn-success px-4"
                       disabled={submitLoading || submitSuccess}
                     >
                       {submitLoading ? (
                         <>
                           <span className="spinner-border spinner-border-sm me-2"></span>
-                          Submitting...
+                          {editingReport ? 'Updating...' : 'Submitting...'}
                         </>
                       ) : submitSuccess ? (
                         <>
-                          <CheckCircle size={16} className="me-2" />
-                          Submitted!
+                          <CheckCircle size={18} className="me-2" />
+                          {editingReport ? 'Updated!' : 'Submitted!'}
                         </>
                       ) : (
                         <>
-                          <FileText size={16} className="me-2" />
-                          Submit Report
+                          <FileText size={18} className="me-2" />
+                          {editingReport ? 'Update Report' : 'Submit Report'}
                         </>
                       )}
                     </button>
@@ -833,6 +857,52 @@ export default function Reports() {
           </div>
         )}
       </div>
+
+      <style jsx>{`
+        .bg-gradient-primary {
+          background: linear-gradient(135deg, #198754 0%, #157347 100%);
+        }
+        
+        .modal-content {
+          border-radius: 1rem;
+          overflow: hidden;
+        }
+        
+        .form-control, .form-select {
+          border-radius: 0.75rem;
+          padding: 0.75rem 1rem;
+          font-size: 0.95rem;
+          transition: all 0.2s ease-in-out;
+        }
+        
+        .form-control:focus, .form-select:focus {
+          box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25) !important;
+          border-color: #198754;
+        }
+        
+        .report-actions {
+          position: absolute;
+          top: 1rem;
+          right: 1rem;
+          display: flex;
+          gap: 0.5rem;
+          opacity: 0;
+          transition: opacity 0.2s ease-in-out;
+        }
+        
+        .report-card:hover .report-actions {
+          opacity: 1;
+        }
+        
+        .report-card {
+          position: relative;
+          transition: transform 0.2s ease-in-out;
+        }
+        
+        .report-card:hover {
+          transform: translateY(-2px);
+        }
+      `}</style>
     </Dashboard>
   )
 }

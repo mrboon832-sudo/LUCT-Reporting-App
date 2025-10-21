@@ -65,3 +65,65 @@ export async function addStream(req, res) {
     })
   }
 }
+
+export async function updateStream(req, res) {
+  const { id } = req.params;
+  const { stream_name, prl_id } = req.body;
+
+  console.log(`📥 PUT /streams/${id} - Request body:`, req.body);
+
+  try {
+    const result = await pool.query(
+      "UPDATE streams SET stream_name = $1, prl_id = $2 WHERE id = $3 RETURNING *",
+      [stream_name, prl_id, id]
+    );
+
+    if (result.rows.length === 0) {
+      console.log(`❌ Stream with ID ${id} not found`);
+      return res.status(404).json({ error: "Stream not found" });
+    }
+
+    console.log("✅ Stream updated successfully:", result.rows[0]);
+    res.json({ 
+      message: "Stream updated successfully",
+      stream: result.rows[0]
+    });
+  } catch (err) {
+    console.error("❌ Error updating stream:", err);
+    
+    if (err.code === '23503') {
+      return res.status(400).json({ 
+        error: "Invalid PRL ID",
+        details: "The specified PRL does not exist"
+      });
+    }
+
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function deleteStream(req, res) {
+  const { id } = req.params;
+  console.log(`📥 DELETE /streams/${id} - Deleting stream`);
+
+  try {
+    const result = await pool.query(
+      "DELETE FROM streams WHERE id = $1 RETURNING *",
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      console.log(`❌ Stream with ID ${id} not found`);
+      return res.status(404).json({ error: "Stream not found" });
+    }
+
+    console.log("✅ Stream deleted successfully:", result.rows[0]);
+    res.json({ 
+      message: "Stream deleted successfully",
+      deletedStream: result.rows[0]
+    });
+  } catch (err) {
+    console.error("❌ Error deleting stream:", err);
+    res.status(500).json({ error: err.message });
+  }
+}

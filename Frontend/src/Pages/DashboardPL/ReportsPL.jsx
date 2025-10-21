@@ -6,7 +6,7 @@ import "../../CSS/Dashboard.css"
 import "../../CSS/PL.css"
 import { saveAs } from "file-saver"
 import * as XLSX from "xlsx"
-import { FileText, Download, Search, Filter, Calendar, Users, Eye } from "lucide-react"
+import { FileText, Download, Search, Filter, Calendar, Users, Eye, Edit2, Trash2, X, CheckCircle2 } from "lucide-react"
 
 export default function ReportsPL() {
   const [user, setUser] = useState(null)
@@ -18,6 +18,9 @@ export default function ReportsPL() {
   const [filterLecturer, setFilterLecturer] = useState("all")
   const [selectedReport, setSelectedReport] = useState(null)
   const [message, setMessage] = useState("")
+  const [editingReport, setEditingReport] = useState(null)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [reportToDelete, setReportToDelete] = useState(null)
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user")
@@ -40,6 +43,52 @@ export default function ReportsPL() {
     } catch (err) {
       console.error(err)
     }
+  }
+
+  async function handleUpdateReport(e) {
+    e.preventDefault()
+    try {
+      await api.put(`/reports/${editingReport.id}`, editingReport)
+      setMessage("✅ Report updated successfully!")
+      setEditingReport(null)
+      fetchData()
+      setTimeout(() => setMessage(""), 3000)
+    } catch (err) {
+      setMessage("❌ Failed to update report.")
+      setTimeout(() => setMessage(""), 3000)
+    }
+  }
+
+  async function handleDeleteReport() {
+    try {
+      await api.delete(`/reports/${reportToDelete.id}`)
+      setMessage("✅ Report deleted successfully!")
+      setShowDeleteModal(false)
+      setReportToDelete(null)
+      fetchData()
+      setTimeout(() => setMessage(""), 3000)
+    } catch (err) {
+      setMessage("❌ Failed to delete report.")
+      setTimeout(() => setMessage(""), 3000)
+    }
+  }
+
+  function startEdit(report) {
+    setEditingReport({ ...report })
+  }
+
+  function cancelEdit() {
+    setEditingReport(null)
+  }
+
+  function confirmDelete(report) {
+    setReportToDelete(report)
+    setShowDeleteModal(true)
+  }
+
+  function cancelDelete() {
+    setShowDeleteModal(false)
+    setReportToDelete(null)
   }
 
   const exportAllReports = () => {
@@ -207,6 +256,155 @@ export default function ReportsPL() {
           </div>
         )}
 
+        {/* Edit Report Modal/Card */}
+        {editingReport && (
+          <div className="mb-4">
+            <div className="pl-card border-warning">
+              <div className="pl-card-header bg-warning bg-opacity-10">
+                <div className="d-flex align-items-center justify-content-between">
+                  <div className="d-flex align-items-center gap-2">
+                    <div className="header-icon header-icon-orange">
+                      <Edit2 size={24} />
+                    </div>
+                    <div>
+                      <h3 className="pl-card-title mb-0">Edit Report</h3>
+                      <p className="pl-card-subtitle mb-0">Update report information</p>
+                    </div>
+                  </div>
+                  <button onClick={cancelEdit} className="btn btn-sm btn-light">
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+              <div className="card-body">
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <label className="pl-label">Week of Reporting *</label>
+                    <input
+                      type="text"
+                      value={editingReport.week_of_reporting}
+                      onChange={(e) =>
+                        setEditingReport({ ...editingReport, week_of_reporting: e.target.value })
+                      }
+                      className="pl-input"
+                    />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="pl-label">Date of Lecture *</label>
+                    <input
+                      type="date"
+                      value={editingReport.date_of_lecture}
+                      onChange={(e) =>
+                        setEditingReport({ ...editingReport, date_of_lecture: e.target.value })
+                      }
+                      className="pl-input"
+                    />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="pl-label">Students Present *</label>
+                    <input
+                      type="number"
+                      value={editingReport.actual_students_present}
+                      onChange={(e) =>
+                        setEditingReport({ ...editingReport, actual_students_present: e.target.value })
+                      }
+                      className="pl-input"
+                    />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="pl-label">Venue *</label>
+                    <input
+                      type="text"
+                      value={editingReport.venue}
+                      onChange={(e) =>
+                        setEditingReport({ ...editingReport, venue: e.target.value })
+                      }
+                      className="pl-input"
+                    />
+                  </div>
+                  <div className="col-12">
+                    <label className="pl-label">Topic Taught *</label>
+                    <textarea
+                      value={editingReport.topic_taught}
+                      onChange={(e) =>
+                        setEditingReport({ ...editingReport, topic_taught: e.target.value })
+                      }
+                      className="pl-input"
+                      rows="3"
+                    />
+                  </div>
+                  <div className="col-12">
+                    <label className="pl-label">Learning Outcomes</label>
+                    <textarea
+                      value={editingReport.learning_outcomes}
+                      onChange={(e) =>
+                        setEditingReport({ ...editingReport, learning_outcomes: e.target.value })
+                      }
+                      className="pl-input"
+                      rows="3"
+                    />
+                  </div>
+                  <div className="col-12">
+                    <label className="pl-label">Recommendations</label>
+                    <textarea
+                      value={editingReport.recommendations}
+                      onChange={(e) =>
+                        setEditingReport({ ...editingReport, recommendations: e.target.value })
+                      }
+                      className="pl-input"
+                      rows="3"
+                    />
+                  </div>
+                  <div className="col-12">
+                    <div className="d-flex gap-2">
+                      <button onClick={handleUpdateReport} className="btn btn-warning btn-lg flex-fill">
+                        <CheckCircle2 size={18} className="me-2" />
+                        Save Changes
+                      </button>
+                      <button onClick={cancelEdit} className="btn btn-light btn-lg">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && (
+          <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content">
+                <div className="modal-header border-0">
+                  <h5 className="modal-title">Confirm Delete</h5>
+                  <button type="button" className="btn-close" onClick={cancelDelete}></button>
+                </div>
+                <div className="modal-body">
+                  <div className="text-center py-3">
+                    <Trash2 size={48} className="text-danger mb-3" />
+                    <h5>Are you sure you want to delete this report?</h5>
+                    <p className="text-muted mb-2">
+                      Report #{reportToDelete?.id} - Week {reportToDelete?.week_of_reporting}
+                    </p>
+                    <p className="text-muted small">This action cannot be undone.</p>
+                  </div>
+                </div>
+                <div className="modal-footer border-0">
+                  <button type="button" className="btn btn-light" onClick={cancelDelete}>
+                    Cancel
+                  </button>
+                  <button type="button" className="btn btn-danger" onClick={handleDeleteReport}>
+                    <Trash2 size={18} className="me-2" />
+                    Delete Report
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Search and Filters */}
         <div className="pl-card mb-4">
           <div className="card-body">
@@ -307,19 +505,32 @@ export default function ReportsPL() {
                             <span className="students-count">{r.actual_students_present}</span>
                           </td>
                           <td>
-                            <button 
-                              onClick={() => setSelectedReport(r)}
-                              className="btn btn-sm btn-outline-primary me-2"
-                            >
-                              <Eye size={14} className="me-1" />
-                              View
-                            </button>
-                            <button 
-                              onClick={() => downloadReport(r)}
-                              className="btn btn-sm btn-outline-success"
-                            >
-                              <Download size={14} />
-                            </button>
+                            <div className="d-flex gap-2">
+                              <button 
+                                onClick={() => setSelectedReport(r)}
+                                className="btn btn-sm btn-outline-primary"
+                              >
+                                <Eye size={14} />
+                              </button>
+                              <button 
+                                onClick={() => startEdit(r)}
+                                className="btn btn-sm btn-outline-warning"
+                              >
+                                <Edit2 size={14} />
+                              </button>
+                              <button 
+                                onClick={() => confirmDelete(r)}
+                                className="btn btn-sm btn-outline-danger"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                              <button 
+                                onClick={() => downloadReport(r)}
+                                className="btn btn-sm btn-outline-success"
+                              >
+                                <Download size={14} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       )

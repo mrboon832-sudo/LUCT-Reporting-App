@@ -3,7 +3,7 @@ import api from "../../Api/api";
 import Dashboard from "../../Components/Dashboard";
 import "../../CSS/Dashboard.css";
 import "../../CSS/Student.css";
-import { Star, Send, CheckCircle, AlertCircle, MessageSquare } from "lucide-react";
+import { Star, Send, CheckCircle, AlertCircle, MessageSquare, Edit, Trash2, X, Save } from "lucide-react";
 
 export default function StudentRatings() {
   const [user, setUser] = useState(null);
@@ -15,6 +15,9 @@ export default function StudentRatings() {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [message, setMessage] = useState("");
+  const [editingRatingId, setEditingRatingId] = useState(null);
+  const [editRating, setEditRating] = useState(0);
+  const [editComment, setEditComment] = useState("");
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -68,6 +71,58 @@ export default function StudentRatings() {
       setTimeout(() => setMessage(""), 3000);
     } catch (err) {
       setMessage("❌ Failed to submit rating.");
+      setTimeout(() => setMessage(""), 3000);
+    }
+  }
+
+  async function handleDeleteRating(ratingId) {
+    if (!window.confirm("Are you sure you want to delete this rating?")) {
+      return;
+    }
+
+    try {
+      await api.delete(`/ratings/${ratingId}`);
+      setMessage("✅ Rating deleted successfully!");
+      fetchData(user.id);
+      setTimeout(() => setMessage(""), 3000);
+    } catch (err) {
+      setMessage("❌ Failed to delete rating.");
+      setTimeout(() => setMessage(""), 3000);
+    }
+  }
+
+  function handleEditRating(rating) {
+    setEditingRatingId(rating.id);
+    setEditRating(rating.rating);
+    setEditComment(rating.comment || "");
+  }
+
+  function cancelEdit() {
+    setEditingRatingId(null);
+    setEditRating(0);
+    setEditComment("");
+  }
+
+  async function handleUpdateRating(ratingId) {
+    if (!editRating) {
+      setMessage("❌ Please select a rating.");
+      setTimeout(() => setMessage(""), 3000);
+      return;
+    }
+
+    try {
+      await api.put(`/ratings/${ratingId}`, {
+        rating: editRating,
+        comment: editComment,
+      });
+      setMessage("✅ Rating updated successfully!");
+      setEditingRatingId(null);
+      setEditRating(0);
+      setEditComment("");
+      fetchData(user.id);
+      setTimeout(() => setMessage(""), 3000);
+    } catch (err) {
+      setMessage("❌ Failed to update rating.");
       setTimeout(() => setMessage(""), 3000);
     }
   }
@@ -344,29 +399,105 @@ export default function StudentRatings() {
                       const course = courses.find(c => c.id === r.course_id);
                       return (
                         <div key={r.id} className="col-md-6 col-lg-4">
-                          <div className="rating-card h-100">
+                          <div className="rating-card h-100 position-relative">
+                            {/* Action Buttons */}
+                            <div className="rating-actions position-absolute top-0 end-0 p-2">
+                              {editingRatingId === r.id ? (
+                                <div className="d-flex gap-1">
+                                  <button
+                                    className="btn btn-success btn-sm"
+                                    onClick={() => handleUpdateRating(r.id)}
+                                    title="Save changes"
+                                  >
+                                    <Save size={14} />
+                                  </button>
+                                  <button
+                                    className="btn btn-secondary btn-sm"
+                                    onClick={cancelEdit}
+                                    title="Cancel editing"
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="d-flex gap-1">
+                                  <button
+                                    className="btn btn-outline-primary btn-sm"
+                                    onClick={() => handleEditRating(r)}
+                                    title="Edit rating"
+                                  >
+                                    <Edit size={14} />
+                                  </button>
+                                  <button
+                                    className="btn btn-outline-danger btn-sm"
+                                    onClick={() => handleDeleteRating(r.id)}
+                                    title="Delete rating"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+
                             <div className="d-flex justify-content-between align-items-start mb-2">
                               <span className="text-success fw-semibold">
                                 {course?.course_code}
                               </span>
-                              <div className="d-flex align-items-center gap-2">
-                                <div className="d-flex">
-                                  {[...Array(5)].map((_, i) => (
-                                    <Star
-                                      key={i}
-                                      size={16}
-                                      className={i < r.rating ? "text-warning" : "text-muted"}
-                                      fill={i < r.rating ? "currentColor" : "none"}
-                                    />
-                                  ))}
+                              {editingRatingId === r.id ? (
+                                <div className="d-flex align-items-center gap-2">
+                                  <div className="d-flex">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                      <button
+                                        key={star}
+                                        type="button"
+                                        className={`btn btn-link p-0 ${editRating >= star ? 'text-warning' : 'text-muted'}`}
+                                        onClick={() => setEditRating(star)}
+                                        style={{ border: 'none', background: 'none' }}
+                                      >
+                                        <Star
+                                          size={16}
+                                          fill={editRating >= star ? "currentColor" : "none"}
+                                        />
+                                      </button>
+                                    ))}
+                                  </div>
+                                  <span className="fw-bold">{editRating}/5</span>
                                 </div>
-                                <span className="fw-bold">{r.rating}/5</span>
-                              </div>
+                              ) : (
+                                <div className="d-flex align-items-center gap-2">
+                                  <div className="d-flex">
+                                    {[...Array(5)].map((_, i) => (
+                                      <Star
+                                        key={i}
+                                        size={16}
+                                        className={i < r.rating ? "text-warning" : "text-muted"}
+                                        fill={i < r.rating ? "currentColor" : "none"}
+                                      />
+                                    ))}
+                                  </div>
+                                  <span className="fw-bold">{r.rating}/5</span>
+                                </div>
+                              )}
                             </div>
+                            
                             <h6 className="fw-semibold mb-2">
                               {course?.course_name}
                             </h6>
-                            <p className="rating-comment mb-2">"{r.comment || 'No comment provided'}"</p>
+                            
+                            {editingRatingId === r.id ? (
+                              <div className="mb-2">
+                                <textarea
+                                  value={editComment}
+                                  onChange={(e) => setEditComment(e.target.value)}
+                                  className="form-control form-control-sm"
+                                  placeholder="Update your comment..."
+                                  rows="2"
+                                ></textarea>
+                              </div>
+                            ) : (
+                              <p className="rating-comment mb-2">"{r.comment || 'No comment provided'}"</p>
+                            )}
+                            
                             <div className="text-muted small">
                               Lecturer ID: {r.lecturer_id}
                             </div>

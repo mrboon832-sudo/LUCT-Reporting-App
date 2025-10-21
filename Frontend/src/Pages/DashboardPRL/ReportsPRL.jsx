@@ -3,7 +3,7 @@ import api from '../../Api/api';
 import Dashboard from '../../Components/Dashboard';
 import '../../CSS/Dashboard.css'; 
 import "../../CSS/PRL.css";
-import { FileText, Download, MessageSquare, Filter, Calendar, Eye, User, Clock, MapPin, Users, BookOpen } from "lucide-react"
+import { FileText, Download, MessageSquare, Filter, Calendar, Eye, User, Clock, MapPin, Users, BookOpen, Edit2, Trash2, X, CheckCircle2 } from "lucide-react"
 
 export default function ReportsPRL() {
   const [user, setUser] = useState(null)
@@ -19,6 +19,9 @@ export default function ReportsPRL() {
     course: "all",
     status: "all"
   })
+  const [editingFeedback, setEditingFeedback] = useState(null)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [feedbackToDelete, setFeedbackToDelete] = useState(null)
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user")
@@ -66,6 +69,36 @@ export default function ReportsPRL() {
     }
   }
 
+  async function handleUpdateFeedback(e) {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      await api.put(`/feedback/${editingFeedback.id}`, {
+        feedback_text: editingFeedback.feedback_text,
+      })
+      setEditingFeedback(null)
+      fetchData()
+    } catch (err) {
+      console.error("Failed to update feedback:", err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleDeleteFeedback() {
+    setLoading(true)
+    try {
+      await api.delete(`/feedback/${feedbackToDelete.id}`)
+      setShowDeleteModal(false)
+      setFeedbackToDelete(null)
+      fetchData()
+    } catch (err) {
+      console.error("Failed to delete feedback:", err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   function handleViewFeedback(report) {
     const reportFeedback = feedbackList.filter(fb => fb.report_id === report.id)
     setViewingFeedback({
@@ -76,6 +109,24 @@ export default function ReportsPRL() {
 
   function handleViewReport(report) {
     setViewingReport(report)
+  }
+
+  function startEditFeedback(feedback) {
+    setEditingFeedback({ ...feedback })
+  }
+
+  function cancelEditFeedback() {
+    setEditingFeedback(null)
+  }
+
+  function confirmDeleteFeedback(feedback) {
+    setFeedbackToDelete(feedback)
+    setShowDeleteModal(true)
+  }
+
+  function cancelDeleteFeedback() {
+    setShowDeleteModal(false)
+    setFeedbackToDelete(null)
   }
 
   const filteredReports = reports.filter(report => {
@@ -155,6 +206,99 @@ export default function ReportsPRL() {
             </div>
           </div>
         </div>
+
+        {/* Edit Feedback Modal */}
+        {editingFeedback && (
+          <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content prl-modal">
+                <div className="modal-header">
+                  <h5 className="modal-title">
+                    <Edit2 size={20} className="me-2" />
+                    Edit Feedback
+                  </h5>
+                  <button 
+                    type="button" 
+                    className="btn-close" 
+                    onClick={cancelEditFeedback}
+                  ></button>
+                </div>
+                <div className="modal-body">
+                  <form onSubmit={handleUpdateFeedback}>
+                    <div className="mb-3">
+                      <label className="prl-label">Your Feedback</label>
+                      <textarea
+                        value={editingFeedback.feedback_text}
+                        onChange={(e) => setEditingFeedback({ ...editingFeedback, feedback_text: e.target.value })}
+                        placeholder="Update your feedback..."
+                        className="prl-input"
+                        rows="5"
+                        required
+                      ></textarea>
+                    </div>
+                    <div className="d-flex justify-content-end gap-2">
+                      <button
+                        type="button"
+                        onClick={cancelEditFeedback}
+                        className="btn btn-secondary"
+                        disabled={loading}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="btn btn-warning"
+                        disabled={loading}
+                      >
+                        {loading ? (
+                          <>
+                            <span className="spinner-border spinner-border-sm me-2"></span>
+                            Updating...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 size={16} className="me-2" />
+                            Update Feedback
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Feedback Confirmation Modal */}
+        {showDeleteModal && (
+          <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content">
+                <div className="modal-header border-0">
+                  <h5 className="modal-title">Confirm Delete</h5>
+                  <button type="button" className="btn-close" onClick={cancelDeleteFeedback}></button>
+                </div>
+                <div className="modal-body">
+                  <div className="text-center py-3">
+                    <Trash2 size={48} className="text-danger mb-3" />
+                    <h5>Are you sure you want to delete this feedback?</h5>
+                    <p className="text-muted small">This action cannot be undone.</p>
+                  </div>
+                </div>
+                <div className="modal-footer border-0">
+                  <button type="button" className="btn btn-light" onClick={cancelDeleteFeedback}>
+                    Cancel
+                  </button>
+                  <button type="button" className="btn btn-danger" onClick={handleDeleteFeedback}>
+                    <Trash2 size={18} className="me-2" />
+                    Delete Feedback
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="prl-card">
           <div className="prl-card-header">
@@ -533,12 +677,30 @@ export default function ReportsPRL() {
                       {viewingFeedback.feedback.map((feedback) => (
                         <div key={feedback.id} className="feedback-item card mb-3">
                           <div className="card-body">
-                            <div className="mb-2">
-                              <strong className="text-primary">PRL Feedback</strong>
-                              <small className="text-muted ms-2">
-                                {new Date(feedback.created_at).toLocaleDateString()} at{' '}
-                                {new Date(feedback.created_at).toLocaleTimeString()}
-                              </small>
+                            <div className="d-flex justify-content-between align-items-start mb-2">
+                              <div>
+                                <strong className="text-primary">PRL Feedback</strong>
+                                <small className="text-muted ms-2">
+                                  {new Date(feedback.created_at).toLocaleDateString()} at{' '}
+                                  {new Date(feedback.created_at).toLocaleTimeString()}
+                                </small>
+                              </div>
+                              <div className="d-flex gap-1">
+                                <button
+                                  onClick={() => startEditFeedback(feedback)}
+                                  className="btn btn-sm btn-outline-warning"
+                                  title="Edit Feedback"
+                                >
+                                  <Edit2 size={12} />
+                                </button>
+                                <button
+                                  onClick={() => confirmDeleteFeedback(feedback)}
+                                  className="btn btn-sm btn-outline-danger"
+                                  title="Delete Feedback"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
                             </div>
                             <p className="mb-0 feedback-text">{feedback.feedback_text}</p>
                           </div>
